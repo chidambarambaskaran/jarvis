@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jarvis</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1a1a1a; 
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+            background-color: #222;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            text-align: center; 
+        }
+
+        header {
+            text-align: center;
+            background: #333;
+            color: #ff8000;
+            padding: 10px 0;
+            border-radius: 10px; 
+        }
+
+        .chat-area {
+            border: 1px solid #ccc;
+            padding: 10px;
+            height: 300px;
+            overflow-y: scroll;
+            background: #333; 
+            margin-bottom: 10px;
+            border-radius: 5px; 
+            position: relative;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+
+        button {
+            flex: 1;
+            margin: 0 5px;
+            padding: 10px;
+            border: none;
+            background-color: #ff8000; 
+            color: white;
+            cursor: pointer;
+            border-radius: 5px; 
+            transition: background-color 0.3s;
+            font-size: 16px; 
+        }
+
+        button:hover {
+            background-color: #e57d00; 
+        }
+
+        .user-message, .jarvis-message {
+            margin: 5px 0;
+            opacity: 0; 
+            animation: fadeIn 0.5s forwards; 
+            display: inline-block; 
+            max-width: 90%;
+            text-align: center; 
+            position: relative; 
+            animation-name: flowIn; 
+        }
+
+        .jarvis-message {
+            color: #ff8000; 
+        }
+
+        .avatar {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            background: url('https://upload.wikimedia.org/wikipedia/commons/5/54/Iron_Man_Arc_Reactor.png') no-repeat center/cover; /* Ironman arc reactor */
+            border-radius: 50%; 
+            margin-right: 10px;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px); 
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes flowIn {
+            0% {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Jarvis</h1>
+        </header>
+        <div class="chat-area" id="chat-output"></div>
+        <div class="button-container">
+            <button onclick="getNews()">📰 News</button>
+            <button onclick="startSearch()">🔍 Search</button>
+            <button onclick="getTime()">⏰ Time</button>
+            <button onclick="playVideo()">▶️ Play Video</button>
+            <button onclick="tellJoke()">😂 Joke</button>
+            <button onclick="terminate()">❌ Terminate</button>
+        </div>
+    </div>
+
+    <script>
+        const synth = window.speechSynthesis;
+
+        function speak(text) {
+            if (synth.speaking) {
+                synth.cancel(); 
+            }
+            const utterance = new SpeechSynthesisUtterance(text);
+            synth.speak(utterance);
+        }
+
+        function displayMessage(message, type) {
+            const chatOutput = document.getElementById('chat-output');
+            chatOutput.innerHTML = '';
+            const div = document.createElement('div');
+            div.className = type === 'user' ? 'user-message' : 'jarvis-message';
+            div.innerHTML = type === 'user' ? `YOU: ${message}` : `<span class="avatar"></span> JARVIS:<br> ${message}`;
+            chatOutput.appendChild(div);
+            setTimeout(() => {
+                div.style.opacity = 1;
+            }, 100);
+            chatOutput.scrollTop = chatOutput.scrollHeight;
+
+            if (type !== 'user') speak(message);
+        }
+
+        function getNews() {
+            fetch('https://newsapi.org/v2/top-headlines?country=us&apiKey=3ff646aa4dcd4294b3af45745f344bee') // Replace with your API key
+                .then(response => response.json())
+                .then(data => {
+                    if (data.articles.length > 0) {
+                        const headlines = data.articles.slice(0, 5).map((article, index) => `News ${index + 1}: ${article.title}`).join('<br>');
+                        displayMessage(headlines, 'jarvis');
+                    } else {
+                        displayMessage("Sorry, I couldn't fetch the news right now.", 'jarvis');
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    displayMessage("Sorry, I couldn't fetch the news right now.", 'jarvis');
+                });
+        }
+
+        function startSearch() {
+            const query = prompt("What do you want to search on Wikipedia?");
+            if (query) {
+                displayMessage(`Searching for "${query}"...`, 'user');
+                fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${query}&format=json&origin=*`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.query.search.length > 0) {
+                            const summary = data.query.search[0].snippet.replace(/(<([^>]+)>)/gi, ""); 
+                            displayMessage(`Result: ${summary}`, 'jarvis');
+                        } else {
+                            displayMessage("No results found.", 'jarvis');
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        displayMessage("Sorry, I encountered an error while searching.", 'jarvis');
+                    });
+            }
+        }
+
+        function getTime() {
+            const timeNow = new Date().toLocaleTimeString();
+            displayMessage(`Current time is ${timeNow}`, 'jarvis');
+        }
+
+        function playVideo() {
+            const topic = prompt("What topic do you want to watch a video on?");
+            if (topic) {
+                displayMessage(`Searching for videos about "${topic}"...`, 'user');
+                // Directly open the YouTube search results page for the specified topic
+                window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(topic)}`);
+            }
+        }
+
+        function tellJoke() {
+            fetch('https://v2.jokeapi.dev/joke/Any')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.joke) {
+                        displayMessage(data.joke, 'jarvis');
+                    } else if (data.setup && data.delivery) {
+                        displayMessage(`${data.setup} - ${data.delivery}`, 'jarvis');
+                    } else {
+                        displayMessage("Sorry, I couldn't fetch a joke right now.", 'jarvis');
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    displayMessage("Sorry, I couldn't fetch a joke right now.", 'jarvis');
+                });
+        }
+
+        function terminate() {
+            displayMessage("Terminating the program...", 'jarvis');
+            setTimeout(() => {
+                window.close();
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
